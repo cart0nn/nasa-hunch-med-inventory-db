@@ -11,8 +11,7 @@ import adafruit_ads1x15.ads1115 as ADS
 from adafruit_ads1x15.analog_in import AnalogIn
 import sqlite3 as sqlite
 
-# Define the filename
-filename = "variables.txt"
+
 
 clk = 6
 dt = 5
@@ -58,7 +57,7 @@ calibrated = False
 #
 # DB FUNCTIONS -----------------------------------------------------------------------------------
 #
-def initTable():
+def initSQLLite():
     try:
         global sqliteConnection; sqliteConnection = sqlite.connect('inventory.db')
         global cursor; cursor = sqliteConnection.cursor()
@@ -74,7 +73,7 @@ def initTable():
             
 def setupTable():
     try:
-        initTable()
+        initSQLLite()
         cursor.execute('''
                         CREATE TABLE IF NOT EXISTS inventory (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -114,23 +113,24 @@ def setupTable():
         if sqliteConnection:
             sqliteConnection.close()
             print('The SQLite connection is closed')
+
+# commented out b/c idk what to do with this yet            
+# def insertToTable():
+#     name = input('Enter item name: ')
+#     lifetime = input('Enter item lifetime: ')
+#     if sqliteConnection:
+#         try:
+#             cursor.execute('INSERT INTO inventory (',name,', date_added,', lifetime, 'type) VALUES (?, ?, ?)')
+#             sqliteConnection.commit()
+#             print('Record inserted successfully')
             
-def insertToTable():
-    name = input('Enter item name: ')
-    lifetime = input('Enter item lifetime: ')
-    if sqliteConnection:
-        try:
-            cursor.execute('INSERT INTO inventory (',name,', date_added,', lifetime, 'type) VALUES (?, ?, ?)')
-            sqliteConnection.commit()
-            print('Record inserted successfully')
+#         except sqlite.Error as error:
+#             print('Error while inserting to table, ',error)
             
-        except sqlite.Error as error:
-            print('Error while inserting to table, ',error)
-            
-        finally:
-            if sqliteConnection:
-                sqliteConnection.close()
-                print('The SQLite connection is closed')
+#         finally:
+#             if sqliteConnection:
+#                 sqliteConnection.close()
+#                 print('The SQLite connection is closed')
                 
 def dumpTable():
     try:
@@ -147,10 +147,17 @@ def dumpTable():
         if sqliteConnection:
             sqliteConnection.close()
             print('The SQLite connection is closed')
+# NOT DONE
+def save_values_to_file(length_used, volume_total, volume_used, radius, length, offset, light_max, light_transmission, light_inventory):
+    cursor.execute('''
+                    INSERT INTO calibration (volume_total, radius, length, offset, light_max, passthrough_pct, length_used)
+                    VALUES ({volume_total}, {radius}, {length}, {offset}, {light_max}, {light_transmission}, {length_used})
+                    '''.format(volume_total, radius, length, offset, light_max, light_transmission, length_used)
 
-def save_values_to_file(filename, length_used, volume_total, volume_used, radius, length, offset, light_max, light_transmission, light_inventory):
-    with open(filename, 'w') as f:
-        f.write(f"{length_used}\n{volume_total}\n{volume_used}\n{radius}\n{length}\n{offset}\n{light_max}\n{light_transmission}\n{light_inventory}")
+                    ```INSERT INTO inventory (package_inventory)
+                    VALUES ({light_inventory})````
+                    .format(light_inventory))
+# NOT DONE  
 
 def load_values_from_file(filename):
     with open(filename, 'r') as f:
@@ -411,7 +418,7 @@ def auto_Inventory(filename, length_used, volume_total, volume_used, radius, len
 #
 def selectionLoop(filename, volume_total, radius, length, offset, calibrated, light_max, light_transmission, light_inventory):
     print('test')
-    command = input('select one of the following options (package inv, light calibration, roller inv, roller calibration): ').lower()
+    command = input('select one of the following options (package inv, light calibration, roller inv, roller calibration, inv setup): ').lower()
     if command == 'pi':
         light_inventory = lightInv(total, average, readindex, readings, numreadings, light_max, light_transmission, calibrated)
         print(f'inventory calculated: {light_inventory}')
@@ -449,9 +456,11 @@ def selectionLoop(filename, volume_total, radius, length, offset, calibrated, li
         call_ROLLERCAL(filename)
     elif command == "ri":
         insertNew(filename, volume_total, radius, length, offset)
+    elif command == "is":
+        setupTable()
 
 if __name__ == '__main__':
-    initTable()
-    selectionLoop()
     check_and_load(filename)
+    initSQLLite()      
+    selectionLoop()
 
