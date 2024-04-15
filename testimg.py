@@ -11,8 +11,6 @@ import adafruit_ads1x15.ads1115 as ADS
 from adafruit_ads1x15.analog_in import AnalogIn
 import sqlite3 as sqlite
 
-
-
 clk = 6
 dt = 5
 sw = 13
@@ -57,6 +55,9 @@ calibrated = False
 #
 # DB FUNCTIONS -----------------------------------------------------------------------------------
 #
+
+filename = "inventory.db"
+
 def initSQLLite():
     try:
         global sqliteConnection; sqliteConnection = sqlite.connect('inventory.db')
@@ -131,22 +132,24 @@ def setupTable():
 #             if sqliteConnection:
 #                 sqliteConnection.close()
 #                 print('The SQLite connection is closed')
-                
-def dumpTable():
-    try:
-        sqliteConnection = sqlite.connect('inventory.db')
-        cursor = sqliteConnection.cursor()
-        cursor.execute('SELECT * FROM inventory')
-        sqliteConnection.commit()
-        print(cursor.fetchall())
+
+# commented out cause idk what to do with it                
+# def dumpTable():
+#     try:
+#         sqliteConnection = sqlite.connect('inventory.db')
+#         cursor = sqliteConnection.cursor()
+#         cursor.execute('SELECT * FROM inventory')
+#         sqliteConnection.commit()
+#         print(cursor.fetchall())
         
-    except sqlite.Error as error:
-        print('Error while dumping table, ',error)
+#     except sqlite.Error as error:
+#         print('Error while dumping table, ',error)
         
-    finally:
-        if sqliteConnection:
-            sqliteConnection.close()
-            print('The SQLite connection is closed')
+#     finally:
+#         if sqliteConnection:
+#             sqliteConnection.close()
+#             print('The SQLite connection is closed')
+
 # NOT DONE
 def save_values_to_file(length_used, volume_total, volume_used, radius, length, offset, light_max, light_transmission, light_inventory):
     cursor.execute('''
@@ -154,15 +157,24 @@ def save_values_to_file(length_used, volume_total, volume_used, radius, length, 
                     VALUES ({volume_total}, {radius}, {length}, {offset}, {light_max}, {light_transmission}, {length_used})
                     '''.format(volume_total, radius, length, offset, light_max, light_transmission, length_used)
 
-                    ```INSERT INTO inventory (package_inventory)
-                    VALUES ({light_inventory})````
-                    .format(light_inventory))
+                    '''
+                    INSERT INTO inventory (volume_used, package_inventory)
+                    VALUES ({light_inventory})
+                    '''.format(volume_used, light_inventory))
 # NOT DONE  
 
-def load_values_from_file(filename):
-    with open(filename, 'r') as f:
-        lines = f.readlines()
-        return float(lines[0]), float(lines[1]), float(lines[2]), float(lines[3]), float(lines[4]), float(lines[5]), float(lines[6]), float(lines[7]), float(lines[8])
+def load_values_from_file(filename) -> tuple:
+    cursor.execute('''
+                    SELECT volume_total, radius, length, offset, light_max, passthrough_pct, length_used
+                    FROM calibration
+                    WHERE id = (SELECT MAX(id) FROM calibration)
+                    
+                    SELECT volume_used, package_inventory
+                    FROM inventory
+                    WHERE id = (SELECT MAX(id) FROM inventory)
+                    ''')
+    values = cursor.fetchall()
+    return values
 
 def check_and_load(filename):
     if os.path.exists(filename):
