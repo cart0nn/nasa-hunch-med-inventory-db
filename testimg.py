@@ -82,7 +82,7 @@ def setupTable():
                             date_added DATETIME NOT NULL,
                             lifetime integer,
                             type TEXT NOT NULL,
-                            package_inventory REAL
+                            light_inventory REAL
                             volume_used REAL,
                             volume_remaining REAL
                         );
@@ -97,7 +97,7 @@ def setupTable():
                             length REAL,
                             offset REAL,
                             light_max REAL,
-                            passthrough_pct REAL,
+                            light_transmission REAL,
                             length_used REAL,
                         );
                         IF EXISTS
@@ -158,44 +158,29 @@ def save_values_to_file(length_used, volume_total, volume_used, radius, length, 
                     '''.format(volume_total, radius, length, offset, light_max, light_transmission, length_used)
 
                     '''
-                    INSERT INTO inventory (volume_used, package_inventory)
-                    VALUES ({light_inventory})
+                    INSERT INTO inventory (volume_used, light_inventory)
+                    VALUES ({volume_used}, {light_inventory})
                     '''.format(volume_used, light_inventory))
-# NOT DONE  
 
-def load_values_from_file(filename) -> tuple:
+# NOT DONE  
+def load_values_from_file():
     cursor.execute('''
-                    SELECT volume_total, radius, length, offset, light_max, passthrough_pct, length_used
+                    SELECT volume_total, radius, length, offset, light_max, light_transmission, length_used
                     FROM calibration
                     WHERE id = (SELECT MAX(id) FROM calibration)
                     
-                    SELECT volume_used, package_inventory
+                    SELECT volume_used, light_inventory
                     FROM inventory
                     WHERE id = (SELECT MAX(id) FROM inventory)
                     ''')
     values = cursor.fetchall()
-    return values
+    volume_total, radius, length, offset, light_max, light_transmission, length_used, volume_used, light_inventory = values
 
 def check_and_load(filename):
     if os.path.exists(filename):
-        length_used, volume_total, volume_used, radius, length, offset, light_max, light_transmission, light_inventory = load_values_from_file(filename)
-        print("Values loaded from file:")
-        print(f"length used: {length_used} mm")
-        print(f"total volume: {volume_total} mL")
-        print(f"volume used: {volume_used} mL")
-        print(f"radius: {radius} mm")
-        print(f"length: {length} mm")
-        print(f"offset: {offset}")
-        print(f"max light: {light_max}")
-        print(f"passthrough pct: {light_transmission}")
-        print(f"package inventory retrieved: {light_inventory}")
-        if light_max > 0:
-            if light_transmission > 0:
-                calibrated = True
-        print(calibrated)
-        selectionLoop(filename, length_used, volume_total, volume_used, radius, length, offset, light_max, light_transmission, light_inventory, calibrated)
+        load_values_from_file()
     else:
-        print("Values not found in file. Reverting to selection menu for calibration.")
+        print("File not found. Reverting to ")
         # Call ROLLER to define variable values
         length_used = 0
         volume_total = 0
@@ -206,7 +191,10 @@ def check_and_load(filename):
         light_max = 0
         light_transmission = 0
         light_inventory = 0
-        sleep(2.5)
+        while True:
+            prompt = input("Input C to continue: ")
+            if prompt == "C":
+                break
         save_values_to_file(filename, length_used, volume_total, volume_used, radius, length, offset, light_max, light_transmission, light_inventory)
         selectionLoop(filename, length_used, volume_total, volume_used, radius, length, offset, light_max, light_transmission, light_inventory, calibrated)
 
